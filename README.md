@@ -1,4 +1,4 @@
-- See live demo: [https://fun-xyz-demo.vercel.app](https://swapify-olive.vercel.app/)
+- See live demo: https://swapify-olive.vercel.app/
 
 ## Testing locally
 - `yarn install`
