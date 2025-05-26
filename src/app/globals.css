@@ -1,0 +1,17 @@
+:root {
+  -webkit-font-smoothing: unset;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* When font smoothing is enabled */
+:root[data-font-smoothing='true'] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Override Mantine's font smoothing on body */
+body {
+  -webkit-font-smoothing: unset !important;
+  -moz-osx-font-smoothing: unset !important;
+  background: linear-gradient(135deg, #4a4458 0%, #6b5b73 100%);
+}
