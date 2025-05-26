@@ -30,6 +30,7 @@ export const TOKENS: Token[] = [
     address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     icon: getCryptoIconPath('usdc'),
     balance: 126937.97,
+    decimals: 6,
   },
   {
     symbol: 'USDT',
@@ -38,6 +39,7 @@ export const TOKENS: Token[] = [
     address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
     icon: getCryptoIconPath('usdt'),
     balance: 50000.12,
+    decimals: 6,
   },
   {
     symbol: 'ETH',
@@ -46,6 +48,7 @@ export const TOKENS: Token[] = [
     address: '0x0000000000000000000000000000000000000000', // Native ETH
     icon: getCryptoIconPath('eth'),
     balance: 42.1234,
+    decimals: 18,
   },
   {
     symbol: 'WBTC',
@@ -54,6 +57,7 @@ export const TOKENS: Token[] = [
     address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
     icon: getCryptoIconPath('wbtc'),
     balance: 1.2345,
+    decimals: 18,
   },
   {
     symbol: 'UNI',
@@ -62,6 +66,7 @@ export const TOKENS: Token[] = [
     address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
     icon: getCryptoIconPath('uni'),
     balance: 800.0,
+    decimals: 18,
   },
   {
     symbol: 'LINK',
@@ -70,6 +75,7 @@ export const TOKENS: Token[] = [
     address: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
     icon: getCryptoIconPath('link'),
     balance: 2500.5,
+    decimals: 18,
   },
   {
     symbol: 'AAVE',
@@ -78,6 +84,7 @@ export const TOKENS: Token[] = [
     address: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
     icon: getCryptoIconPath('aave'),
     balance: 120.0,
+    decimals: 18,
   },
 ];
 

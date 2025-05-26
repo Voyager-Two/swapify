@@ -5,6 +5,7 @@ export interface Token {
   address: string;
   icon: string;
   balance?: number;
+  decimals?: number;
 }
 
 export interface TokenInfo {

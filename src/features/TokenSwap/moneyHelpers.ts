@@ -1,14 +1,5 @@
 import { formatUnits, parseUnits } from 'viem';
-import {
-  calculateExchangeRate,
-  calculateFee as calculateFeeWei,
-  calculateSwapOutput,
-  calculateUSDValue as calculateUSDValueWei,
-  createPrice,
-  createTokenAmount,
-  formatDisplayAmount,
-  subtractFee,
-} from './weiCalculations';
+import { getTokenMeta } from './common';
 
 // Helper function to format price
 export const formatPrice = (price: number): string => {
@@ -17,19 +8,40 @@ export const formatPrice = (price: number): string => {
   return price.toFixed(8);
 };
 
-// Re-export the robust formatting function from weiCalculations
-export const formatTokenAmount = (amount: string | number): string => {
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-
-  if (isNaN(numAmount) || numAmount === 0) return '0';
-
+// Helper function to format token amounts with proper decimal handling
+export const formatTokenAmount = (amount: string | number, decimals: number = 18): string => {
   try {
-    // Convert to TokenAmount for precision formatting
-    const tokenAmount = createTokenAmount(numAmount.toString(), 18);
-    return formatDisplayAmount(tokenAmount);
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+    if (isNaN(numAmount) || numAmount === 0) return '0';
+
+    // Convert to wei-like units and back for proper formatting
+    const parsedAmount = parseUnits(numAmount.toString(), decimals);
+    const formatted = formatUnits(parsedAmount, decimals);
+    const num = parseFloat(formatted);
+
+    if (num >= 1000000) {
+      return new Intl.NumberFormat('en-US', {
+        notation: 'compact',
+        maximumFractionDigits: 2,
+      }).format(num);
+    }
+    if (num >= 1) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 6,
+      }).format(num);
+    }
+    if (num >= 0.000001) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 8,
+      }).format(num);
+    }
+
+    return num.toExponential(4);
   } catch {
-    // Fallback to basic formatting if conversion fails
-    return numAmount.toString();
+    return amount.toString();
   }
 };
 
@@ -61,28 +73,29 @@ export const formatPriceWithCommas = (price: number): string => {
   }).format(price);
 };
 
-// Calculate fees with precise Wei-based arithmetic (wrapper for UI convenience)
+// Fee calculation with proper decimal handling
 export const calculateFee = (amount: string, price?: { unitPrice: number }): number => {
   if (!amount) return 0;
 
   try {
-    const tokenAmount = createTokenAmount(amount, 18);
-    const feeAmount = calculateFeeWei(tokenAmount, 10); // 10 basis points = 0.1%
-    return Number(feeAmount.formatted);
+    const numAmount = parseFloat(amount);
+    if (!numAmount || isNaN(numAmount)) return 0;
+
+    return numAmount * 0.001; // 0.1% fee
   } catch {
     return 0;
   }
 };
 
-// Calculate final receive amount after fees with precision
+// Final amount calculation after fees with proper decimal handling
 export const calculateFinalAmount = (amount: string, fee: number): number => {
   if (!amount) return 0;
 
   try {
-    const tokenAmount = createTokenAmount(amount, 18);
-    const feeAmount = createTokenAmount(fee.toString(), 18);
-    const finalAmount = subtractFee(tokenAmount, feeAmount);
-    return Number(finalAmount.formatted);
+    const numAmount = parseFloat(amount);
+    if (!numAmount || isNaN(numAmount)) return 0;
+
+    return numAmount - fee;
   } catch {
     return 0;
   }
@@ -103,7 +116,7 @@ export const getEffectiveTokenPrice = (symbol: string, apiPrice?: { unitPrice: n
   return apiPrice;
 };
 
-// Utility function to calculate USD value for a token amount using Wei precision
+// USD value calculation with proper decimal handling
 export const calculateUSDValue = (
   amount: number,
   symbol: string,
@@ -115,16 +128,26 @@ export const calculateUSDValue = (
   if (!effectivePrice) return 0;
 
   try {
-    const tokenAmount = createTokenAmount(amount.toString(), 18);
-    const price = createPrice(effectivePrice.unitPrice);
-    const usdValue = calculateUSDValueWei(tokenAmount, price);
-    return Number(usdValue);
+    const tokenMeta = getTokenMeta(symbol);
+    const decimals = tokenMeta?.decimals ?? 18;
+
+    // Convert to wei-like units for precision
+    const amountWei = parseUnits(amount.toString(), decimals);
+    const priceWei = parseUnits(effectivePrice.unitPrice.toString(), 8); // 8 decimals for USD
+
+    // Calculate USD value: (amount * price) / 10^decimals
+    const usdValueWei = (amountWei * priceWei) / parseUnits('1', decimals);
+
+    // Format back to readable number
+    const usdValue = formatUnits(usdValueWei, 8);
+    return parseFloat(usdValue);
   } catch {
-    return 0;
+    // Fallback to simple calculation
+    return amount * effectivePrice.unitPrice;
   }
 };
 
-// Utility function to calculate token amount from USD value using Wei precision
+// Token amount calculation from USD value with proper decimal handling
 export const calculateTokenAmount = (
   usdAmount: number,
   symbol: string,
@@ -136,21 +159,21 @@ export const calculateTokenAmount = (
   if (!effectivePrice || effectivePrice.unitPrice <= 0) return 0;
 
   try {
-    // For stablecoins, it's a 1:1 ratio
-    if (isStablecoin(symbol)) {
-      return usdAmount;
-    }
+    const tokenMeta = getTokenMeta(symbol);
+    const decimals = tokenMeta?.decimals ?? 18;
 
-    // Use Wei-based calculation: USD / USD_price_of_token = token_amount
-    const usdAmountWei = createTokenAmount(usdAmount.toString(), 18);
-    const tokenPriceWei = createPrice(effectivePrice.unitPrice);
-    const usdPrice = createPrice(1.0); // $1 USD
+    // Convert to wei-like units for precision
+    const usdWei = parseUnits(usdAmount.toString(), 8); // 8 decimals for USD
+    const priceWei = parseUnits(effectivePrice.unitPrice.toString(), 8);
 
-    const exchangeRate = calculateExchangeRate(usdPrice, tokenPriceWei);
-    const tokenResult = calculateSwapOutput(usdAmountWei, exchangeRate, 18);
+    // Calculate token amount: (usdAmount * 10^decimals) / price
+    const tokenAmountWei = (usdWei * parseUnits('1', decimals)) / priceWei;
 
-    return Number(tokenResult.formatted);
+    // Format back to readable number
+    const tokenAmount = formatUnits(tokenAmountWei, decimals);
+    return parseFloat(tokenAmount);
   } catch {
-    return 0;
+    // Fallback to simple calculation
+    return usdAmount / effectivePrice.unitPrice;
   }
 };
