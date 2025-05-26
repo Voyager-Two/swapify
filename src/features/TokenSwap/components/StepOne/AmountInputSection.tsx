@@ -38,7 +38,9 @@ export function AmountInputSection({ sourcePrice, onAmountChange }: AmountInputS
         const effectivePrice = getEffectiveTokenPrice(sourceToken, sourcePrice);
         if (effectivePrice) {
           const usdValue = calculateUSDValue(meta.balance, sourceToken, effectivePrice);
-          setValue('usdAmount', usdValue.toString());
+          // Floor to nearest dollar to avoid precision issues
+          const flooredUsdValue = Math.floor(usdValue);
+          setValue('usdAmount', flooredUsdValue.toString());
           setValue('lastChanged', 'source');
         }
       }
