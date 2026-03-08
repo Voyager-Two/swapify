@@ -4,7 +4,7 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-export default withBundleAnalyzer({
+const nextConfig = {
   reactStrictMode: false,
   devIndicators: false,
   typescript: {
@@ -20,4 +20,7 @@ export default withBundleAnalyzer({
   experimental: {
     optimizePackageImports: ['@mantine/core', '@mantine/hooks'],
   },
-});
+};
+
+// Only apply webpack-based bundle analyzer when ANALYZE is set (Turbopack has no webpack config otherwise)
+export default process.env.ANALYZE === 'true' ? withBundleAnalyzer(nextConfig) : nextConfig;
