@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useGetTokenInfoQuery, useGetTokenPriceQuery } from '@app/features/TokenSwap/tokenApi';
+import { useGetTokenInfoQuery, useGetAllTokenPricesQuery } from '@app/features/TokenSwap/tokenApi';
 import { getTokenMeta } from '@features/TokenSwap/common';
 import { TokenInfo, TokenPrice } from '@features/TokenSwap/types';
 import { skipToken } from '@reduxjs/toolkit/query';
@@ -18,38 +18,27 @@ interface UseTokenDataReturn {
 }
 
 export function useTokenData({ symbol }: UseTokenDataProps): UseTokenDataReturn {
-  const tokenMeta = useMemo(() => {
-    return symbol ? getTokenMeta(symbol) : null;
-  }, [symbol]);
+  const tokenMeta = useMemo(() => (symbol ? getTokenMeta(symbol) : null), [symbol]);
 
-  // Skip queries if no symbol or metadata
   const tokenInfoParams =
     tokenMeta && symbol ? { symbol: symbol as string, chainId: tokenMeta.chainId } : skipToken;
 
-  const tokenPriceParams =
-    tokenMeta && symbol
-      ? { symbol: symbol as string, chainId: tokenMeta.chainId, address: tokenMeta.address }
-      : skipToken;
-
-  // Use RTK Query hooks - they handle caching automatically
   const {
     data: tokenInfo,
     isLoading: infoLoading,
     error: infoError,
   } = useGetTokenInfoQuery(tokenInfoParams);
 
-  const {
-    data: tokenPrice,
-    isLoading: priceLoading,
-    error: priceError,
-  } = useGetTokenPriceQuery(tokenPriceParams);
+  // Shared batch query — same cache entry regardless of which symbol we need
+  const { data: allPrices, isLoading: priceLoading, error: priceError } = useGetAllTokenPricesQuery();
+
+  const tokenPrice = symbol ? allPrices?.[symbol] : undefined;
 
   return {
     tokenInfo,
     tokenPrice,
     loading: infoLoading || priceLoading,
     error:
-      // Only show errors when we're not loading and there's an actual problem
       infoLoading || priceLoading
         ? null
         : (infoError as any)?.message || (priceError as any)?.message || null,

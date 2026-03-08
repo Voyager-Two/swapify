@@ -1,9 +1,8 @@
-import { formatPrice, formatUSD } from '@app/features/TokenSwap/moneyHelpers';
-import { useGetTokenPriceQuery } from '@app/features/TokenSwap/tokenApi';
+import { formatUSD } from '@app/features/TokenSwap/moneyHelpers';
+import { useGetAllTokenPricesQuery } from '@app/features/TokenSwap/tokenApi';
 import { Iconify } from '@common/UI/iconify';
 import { getTokenMeta, handleIconError } from '@features/TokenSwap/common';
-import { skipToken } from '@reduxjs/toolkit/query';
-import { Box, CloseButton, Group, Loader, Modal, ScrollArea, Stack, Text } from '@mantine/core';
+import { Box, CloseButton, Loader, Modal, ScrollArea, Stack, Text } from '@mantine/core';
 import classes from '@features/TokenSwap/css/TokenSelectionDialog.module.css';
 
 interface TokenSelectionDialogProps {
@@ -14,16 +13,6 @@ interface TokenSelectionDialogProps {
   title: string;
 }
 
-// Helper hook to get price for a single token
-function useTokenPrice(symbol: string) {
-  const tokenMeta = getTokenMeta(symbol);
-  const tokenPriceParams = tokenMeta
-    ? { symbol, chainId: tokenMeta.chainId, address: tokenMeta.address }
-    : skipToken;
-
-  return useGetTokenPriceQuery(tokenPriceParams);
-}
-
 export function TokenSelectionDialog({
   opened,
   onClose,
@@ -31,8 +20,8 @@ export function TokenSelectionDialog({
   tokens,
   title,
 }: TokenSelectionDialogProps) {
-  // Fetch prices for all tokens using RTK Query
-  const priceQueries = tokens.map((token) => useTokenPrice(token.value));
+  // One request for all token prices — shared cache, no per-token spam
+  const { data: allPrices, isLoading: pricesLoading } = useGetAllTokenPricesQuery();
 
   return (
     <Modal
@@ -71,9 +60,8 @@ export function TokenSelectionDialog({
             className={classes.scrollArea}
           >
             <Stack gap={0} className={classes.tokenList}>
-              {tokens.map((token, index) => {
-                const priceQuery = priceQueries[index];
-                const price = priceQuery.data;
+              {tokens.map((token) => {
+                const price = allPrices?.[token.value];
 
                 return (
                   <div key={token.value} className={classes.tokenItemWrapper}>
@@ -122,7 +110,7 @@ export function TokenSelectionDialog({
                             return (
                               <>
                                 <Text className={classes.balanceAmount}>
-                                  {priceQuery.isLoading ? (
+                                  {pricesLoading ? (
                                     <span className={classes.loadingIndicator}>
                                       <Loader size={8} />
                                       <span>...</span>

@@ -1,83 +1,42 @@
+import { getTokenMeta } from '@app/features/TokenSwap/common';
+import type { TokenInfo } from '@app/features/TokenSwap/types';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAssetErc20ByChainAndSymbol, getAssetPriceInfo } from '@funkit/api-base';
 
-// Simple API endpoint - RTK Query handles caching on the client side
+// Prices are now fetched directly from CoinGecko in the browser (tokenApi.ts).
+// This route only serves static token info (address, decimals, symbol, name).
+
+function buildTokenInfo(symbol: string, chainId: string): TokenInfo | null {
+  const meta = getTokenMeta(symbol);
+  if (!meta || String(meta.chainId) !== String(chainId)) return null;
+  return {
+    address: meta.address,
+    chain: meta.chainId,
+    decimals: meta.decimals ?? 18,
+    symbol: meta.symbol,
+    name: meta.label,
+  };
+}
+
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.FUNKIT_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'API key missing' }, { status: 500 });
-  }
-
-  let body;
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { type, chainId, symbol, assetTokenAddress, amount } = body;
+  const { type, chainId, symbol } = body;
 
-  try {
-    if (type === 'info') {
-      if (!chainId || !symbol) {
-        return NextResponse.json({ error: 'Missing chainId or symbol' }, { status: 400 });
-      }
-
-      const data = await getAssetErc20ByChainAndSymbol({
-        chainId,
-        symbol,
-        apiKey,
-      });
-
-      return NextResponse.json(data);
-    } else if (type === 'price') {
-      if (!chainId || !assetTokenAddress) {
-        return NextResponse.json(
-          { error: 'Missing chainId or assetTokenAddress' },
-          { status: 400 }
-        );
-      }
-
-      const data = await getAssetPriceInfo({
-        chainId,
-        assetTokenAddress,
-        apiKey,
-      });
-
-      return NextResponse.json(data);
-    } else if (type === 'batch-prices') {
-      // Handle batch price requests
-      const { tokens } = body;
-      if (!Array.isArray(tokens)) {
-        return NextResponse.json({ error: 'tokens must be an array' }, { status: 400 });
-      }
-
-      const results = await Promise.allSettled(
-        tokens.map(
-          async (token: { chainId: string; assetTokenAddress: string; symbol: string }) => {
-            const { chainId, assetTokenAddress, symbol } = token;
-
-            const data = await getAssetPriceInfo({
-              chainId,
-              assetTokenAddress,
-              apiKey,
-            });
-
-            return { symbol, chainId, data };
-          }
-        )
-      );
-
-      const successfulResults = results
-        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-        .map((result) => result.value);
-
-      return NextResponse.json({ results: successfulResults });
-    } else {
-      return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+  if (type === 'info') {
+    if (!chainId || !symbol) {
+      return NextResponse.json({ error: 'Missing chainId or symbol' }, { status: 400 });
     }
-  } catch (err: any) {
-    console.error('API error:', err);
-    return NextResponse.json({ error: err?.message || 'API error' }, { status: 500 });
+    const data = buildTokenInfo(String(symbol), String(chainId));
+    if (!data) {
+      return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+    }
+    return NextResponse.json(data);
   }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
 }
