@@ -1,9 +1,4 @@
-import bundleAnalyzer from '@next/bundle-analyzer';
-
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-});
-
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
   devIndicators: false,
@@ -22,5 +17,4 @@ const nextConfig = {
   },
 };
 
-// Only apply webpack-based bundle analyzer when ANALYZE is set (Turbopack has no webpack config otherwise)
-export default process.env.ANALYZE === 'true' ? withBundleAnalyzer(nextConfig) : nextConfig;
+export default nextConfig;
